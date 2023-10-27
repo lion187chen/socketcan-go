@@ -7,30 +7,30 @@ type Filter struct {
 	Mask uint32
 }
 
-func NewStdFilter(id uint8) Filter {
+func NewStdFilter(id uint32) Filter {
 	return Filter{
-		Id:   uint32(id),
+		Id:   id,
 		Mask: unix.CAN_SFF_MASK,
 	}
 }
 
-func NewStdInvFilter(id uint8) Filter {
+func NewStdInvFilter(id uint32) Filter {
 	return Filter{
-		Id:   uint32(id) | unix.CAN_INV_FILTER,
+		Id:   id | unix.CAN_INV_FILTER,
 		Mask: unix.CAN_SFF_MASK,
 	}
 }
 
-func NewExtFilter(id uint16) Filter {
+func NewExtFilter(id uint32) Filter {
 	return Filter{
-		Id:   uint32(id),
+		Id:   id,
 		Mask: unix.CAN_EFF_MASK,
 	}
 }
 
-func NewExtInvFilter(id uint8) Filter {
+func NewExtInvFilter(id uint32) Filter {
 	return Filter{
-		Id:   uint32(id) | unix.CAN_INV_FILTER,
+		Id:   id | unix.CAN_INV_FILTER,
 		Mask: unix.CAN_EFF_MASK,
 	}
 }
