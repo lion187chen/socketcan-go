@@ -264,7 +264,7 @@ func (my *Can) SendFrame(f *canframe.Frame) {
 
 // RcvFrame() will block until new datas arrived or a error occured.
 func (my *Can) RcvFrame() (canframe.Frame, error) {
-	rd := make([]byte, canframe.FRAME_LEN)
+	rd := make([]byte, canframe.LINUX_FRAME_LEN)
 	n, err := unix.Read(my.fd, rd)
 
 	var f canframe.Frame
