@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/lion187chen/socketcan-go"
+	"github.com/lion187chen/socketcan-go/canframe"
 )
 
 var lookback bool = true
@@ -40,7 +41,7 @@ func main() {
 
 	// Or set the CAN in lookback mode.
 	// We will stop lookback mode in EchoTsk.
-	var sendFrame socketcan.Frame = socketcan.Frame{
+	var sendFrame canframe.Frame = canframe.Frame{
 		ID:         0x20,
 		Data:       []byte{0x01, 0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08},
 		IsExtended: true,
@@ -65,7 +66,7 @@ func main() {
 
 func Echoroutine(can *socketcan.Can) {
 	var err error = nil
-	var frame socketcan.Frame
+	var frame canframe.Frame
 	for err == nil {
 		// can.RcvFrame() will block until new datas arrived.
 		frame, err = can.RcvFrame()

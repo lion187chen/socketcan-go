@@ -1,4 +1,4 @@
-package socketcan
+package canframe
 
 import (
 	"encoding/binary"
@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	maxDataLen = 8
-	frameLen   = 16
+	FRAME_MAX_DATA_LEN = 8
+	FRAME_LEN          = 16
 )
 
 type Frame struct {
@@ -33,10 +33,10 @@ var pad [3]byte
 // 	// padding+reserved fields
 // 	pad [3]byte
 // 	// bytes contains the frame payload.
-// 	data [maxDataLen]byte
+// 	data [FRAME_MAX_DATA_LEN]byte
 // }
 
-func (f *Frame) marshal() []byte {
+func (f *Frame) Marshal() []byte {
 	var maskId uint32
 
 	maskId = f.ID
@@ -53,22 +53,22 @@ func (f *Frame) marshal() []byte {
 	var buf []byte
 
 	buf = binary.LittleEndian.AppendUint32(buf, maskId)
-	if len(f.Data) < maxDataLen {
+	if len(f.Data) < FRAME_MAX_DATA_LEN {
 		buf = append(buf, byte(len(f.Data)))
 		buf = append(buf, pad[:]...)
 	} else {
-		buf = append(buf, byte(maxDataLen))
+		buf = append(buf, byte(FRAME_MAX_DATA_LEN))
 		buf = append(buf, pad[:]...)
 	}
 
-	td := make([]byte, maxDataLen)
+	td := make([]byte, FRAME_MAX_DATA_LEN)
 	copy(td, f.Data)
 
 	buf = append(buf, td...)
 	return buf
 }
 
-func (f *Frame) unmarshal(bs []byte) *Frame {
+func (f *Frame) Unmarshal(bs []byte) *Frame {
 	f.ID = binary.LittleEndian.Uint32(bs[0:unsafe.Sizeof(f.ID)])
 
 	if f.ID&unix.CAN_EFF_FLAG == unix.CAN_EFF_FLAG {
@@ -86,11 +86,11 @@ func (f *Frame) unmarshal(bs []byte) *Frame {
 
 	dlc := bs[unsafe.Sizeof(f.ID)]
 
-	if dlc > maxDataLen {
-		f.Data = make([]byte, maxDataLen)
+	if dlc > FRAME_MAX_DATA_LEN {
+		f.Data = make([]byte, FRAME_MAX_DATA_LEN)
 	} else {
 		f.Data = make([]byte, dlc)
 	}
-	copy(f.Data, bs[frameLen-maxDataLen:])
+	copy(f.Data, bs[FRAME_LEN-FRAME_MAX_DATA_LEN:])
 	return f
 }

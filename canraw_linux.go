@@ -10,6 +10,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/lion187chen/socketcan-go/canframe"
 	"github.com/mdlayher/netlink"
 	"github.com/mdlayher/netlink/nlenc"
 	"golang.org/x/sys/unix"
@@ -257,16 +258,16 @@ func (my *Can) SetListenOnlyMode(mode bool) error {
 }
 
 // SendFrame will block until write done or a error occured.
-func (my *Can) SendFrame(f *Frame) {
-	unix.Write(my.fd, f.marshal())
+func (my *Can) SendFrame(f *canframe.Frame) {
+	unix.Write(my.fd, f.Marshal())
 }
 
 // RcvFrame() will block until new datas arrived or a error occured.
-func (my *Can) RcvFrame() (Frame, error) {
-	rd := make([]byte, frameLen)
+func (my *Can) RcvFrame() (canframe.Frame, error) {
+	rd := make([]byte, canframe.FRAME_LEN)
 	n, err := unix.Read(my.fd, rd)
 
-	var f Frame
+	var f canframe.Frame
 	if err != nil {
 		return f, err
 	}
@@ -274,7 +275,7 @@ func (my *Can) RcvFrame() (Frame, error) {
 		return f, errors.New("read not done")
 	}
 
-	return *(f.unmarshal(rd)), nil
+	return *(f.Unmarshal(rd)), nil
 }
 
 // After all, we must close the CAN.
