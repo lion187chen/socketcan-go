@@ -3,80 +3,80 @@
 package canframe
 
 import (
+	"bytes"
 	"encoding/binary"
-	"unsafe"
 
 	"golang.org/x/sys/unix"
 )
 
 const LINUX_FRAME_LEN = 16
 
-var pad [3]byte
-
-// type frame struct {
-// 	maskId uint32
-// 	dlc    uint8
-// 	// padding+reserved fields
-// 	pad [3]byte
-// 	// bytes contains the frame payload.
-// 	data [FRAME_MAX_DATA_LEN]byte
-// }
-
-func (f *Frame) Marshal() []byte {
-	var maskId uint32
-
-	maskId = f.ID
-	if f.IsExtended {
-		maskId |= unix.CAN_EFF_FLAG
-	}
-	if f.IsRemote {
-		maskId |= unix.CAN_RTR_FLAG
-	}
-	if f.IsError {
-		maskId |= unix.CAN_ERR_FLAG
-	}
-
-	var buf []byte
-
-	buf = binary.LittleEndian.AppendUint32(buf, maskId)
-	if len(f.Data) < FRAME_MAX_DATA_LEN {
-		buf = append(buf, byte(len(f.Data)))
-		buf = append(buf, pad[:]...)
-	} else {
-		buf = append(buf, byte(FRAME_MAX_DATA_LEN))
-		buf = append(buf, pad[:]...)
-	}
-
-	td := make([]byte, FRAME_MAX_DATA_LEN)
-	copy(td, f.Data)
-
-	buf = append(buf, td...)
-	return buf
+type rawFrame struct {
+	MaskId uint32
+	Dlc    uint8
+	// padding+reserved fields
+	Pad [3]byte
+	// bytes contains the frame payload.
+	Data [FRAME_MAX_DATA_LEN]byte
 }
 
-func (f *Frame) Unmarshal(bs []byte) *Frame {
-	f.ID = binary.LittleEndian.Uint32(bs[0:unsafe.Sizeof(f.ID)])
+func (f *Frame) Marshal() ([]byte, error) {
+	var frame rawFrame
 
-	if f.ID&unix.CAN_EFF_FLAG == unix.CAN_EFF_FLAG {
+	frame.MaskId = f.ID
+	if f.IsExtended {
+		frame.MaskId |= unix.CAN_EFF_FLAG
+	}
+	if f.IsRemote {
+		frame.MaskId |= unix.CAN_RTR_FLAG
+	}
+	if f.IsError {
+		frame.MaskId |= unix.CAN_ERR_FLAG
+	}
+
+	if len(f.Data) < FRAME_MAX_DATA_LEN {
+		frame.Dlc = uint8(len(f.Data))
+	} else {
+		frame.Dlc = uint8(FRAME_MAX_DATA_LEN)
+	}
+	copy(frame.Data[:], f.Data)
+
+	var frameb bytes.Buffer
+	err := binary.Write(&frameb, binary.LittleEndian, &frame)
+	if err != nil {
+		return nil, err
+	}
+	return frameb.Bytes(), nil
+}
+
+func (f *Frame) Unmarshal(bs []byte) error {
+	var frame rawFrame
+	var frameb bytes.Buffer
+
+	frameb.Write(bs)
+	err := binary.Read(&frameb, binary.LittleEndian, &frame)
+	if err != nil {
+		return err
+	}
+
+	f.ID = frame.MaskId
+	f.ID &= ^(uint32(unix.CAN_EFF_FLAG | unix.CAN_RTR_FLAG | unix.CAN_ERR_FLAG))
+
+	if frame.MaskId&unix.CAN_EFF_FLAG == unix.CAN_EFF_FLAG {
 		f.IsExtended = true
 	}
-	if f.ID&unix.CAN_RTR_FLAG == unix.CAN_RTR_FLAG {
+	if frame.MaskId&unix.CAN_RTR_FLAG == unix.CAN_RTR_FLAG {
 		f.IsRemote = true
 	}
-	if f.ID&unix.CAN_ERR_FLAG == unix.CAN_ERR_FLAG {
+	if frame.MaskId&unix.CAN_ERR_FLAG == unix.CAN_ERR_FLAG {
 		f.IsError = true
 	}
 
-	f.ID = f.ID & unix.CAN_EFF_MASK
-	f.ID = f.ID & unix.CAN_ERR_MASK
-
-	dlc := bs[unsafe.Sizeof(f.ID)]
-
-	if dlc > FRAME_MAX_DATA_LEN {
-		f.Data = make([]byte, FRAME_MAX_DATA_LEN)
+	if frame.Dlc < FRAME_MAX_DATA_LEN {
+		f.Data = make([]byte, frame.Dlc)
 	} else {
-		f.Data = make([]byte, dlc)
+		f.Data = make([]byte, FRAME_MAX_DATA_LEN)
 	}
-	copy(f.Data, bs[LINUX_FRAME_LEN-FRAME_MAX_DATA_LEN:])
-	return f
+	copy(f.Data, frame.Data[:])
+	return err
 }

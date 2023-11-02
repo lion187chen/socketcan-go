@@ -258,8 +258,12 @@ func (my *Can) SetListenOnlyMode(mode bool) error {
 }
 
 // SendFrame will block until write done or a error occured.
-func (my *Can) SendFrame(f *canframe.Frame) {
-	unix.Write(my.fd, f.Marshal())
+func (my *Can) SendFrame(f *canframe.Frame) (n int, err error) {
+	b, err := f.Marshal()
+	if err != nil {
+		return 0, err
+	}
+	return unix.Write(my.fd, b)
 }
 
 // RcvFrame() will block until new datas arrived or a error occured.
@@ -275,7 +279,8 @@ func (my *Can) RcvFrame() (canframe.Frame, error) {
 		return f, errors.New("read not done")
 	}
 
-	return *(f.Unmarshal(rd)), nil
+	err = f.Unmarshal(rd)
+	return f, err
 }
 
 // After all, we must close the CAN.

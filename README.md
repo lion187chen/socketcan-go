@@ -35,7 +35,7 @@ func main() {
 	// Test if CAN is down.
 	fmt.Println(can.IsUp())
 	// To set bitrate, we must down the CAN interface first.
-	can.SetBitrate(200000)
+	can.SetBitrate(100000)
 	// Up the CAN to set filter or transmit CAN frames.
 	can.SetUp()
 	// To see CAN bitrate.
@@ -64,7 +64,10 @@ func main() {
 	}
 	can.SetLoopback(lookback)
 	// Send a frame. We will receive it immediately because we are in the lookback mode.
-	can.SendFrame(&sendFrame)
+	n, err := can.SendFrame(&sendFrame)
+	if err != nil {
+		fmt.Println(n, err)
+	}
 	// Start a echo goroutine.
 	wg.Add(1)
 	go Echoroutine(can)
@@ -90,7 +93,10 @@ func Echoroutine(can *socketcan.Can) {
 		}
 
 		fmt.Println(frame)
-		can.SendFrame(&frame)
+		n, err := can.SendFrame(&frame)
+		if err != nil {
+			fmt.Println(n, err)
+		}
 	}
 	fmt.Println("Echoroutine Exit:", err)
 	wg.Done()
